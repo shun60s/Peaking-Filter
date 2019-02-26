@@ -1,6 +1,6 @@
 #coding:utf-8
 
-# A class of iir Peaking filter
+# A class of iir Low Shelving filter
 
 # Check version
 #  Python 3.6.4 on win32 (Windows 10)
@@ -14,15 +14,16 @@ import numpy as np
 from scipy import signal
 
 
-class Class_IIR_Peaking1(object):
-    def __init__(self, fpeak=1000, gain=2.0, Q=1.0, sampling_rate=48000):
-        # design iir peaking filter
+class Class_IIR_LowShelving1(object):
+    def __init__(self, fc=250, gain=2.0, slope=1.0, sampling_rate=48000):
+        # design iir Low Shelving filter
         # initalize
-        self.fpeak= fpeak # peak frequecny by unit is [Hz]
+        self.fc= fc # midpoint frequecny by unit is [Hz]
         self.sr= sampling_rate # sampling frequecny by unit is [Hz]
         self.gain= gain # amplification factor (magnification).   This must be > 0.0
-        self.Q= Q # Q factor
-        self.b, self.a= self.set_peaking( self.fpeak, self.gain, self.Q)
+        self.gain= np.sqrt(self.gain)
+        self.slope= slope # shelf slope (S=1 for steepest slope)
+        self.b, self.a= self.set_lowshelving()
         #print ('self.b,self.a', self.b, self.a)
 
     def filtering(self, xin):
@@ -30,7 +31,7 @@ class Class_IIR_Peaking1(object):
     	# input xin
     	# output filtered xin
         return signal.lfilter(self.b, self.a, xin)
-
+        
     def f_show(self, worN=1024):
         # draw frequency response, using scipy
         wlist, fres = signal.freqz(self.b, self.a, worN=worN)
@@ -42,6 +43,7 @@ class Class_IIR_Peaking1(object):
         ax1 = fig.add_subplot(111)
         
         plt.semilogx(flist, 20 * np.log10(abs(fres)), 'b')  # plt.plot(flist, 20 * np.log10(abs(fres)), 'b')
+        
         plt.ylabel('Amplitude [dB]', color='b')
         plt.xlabel('Frequency [Hz]')
         
@@ -54,30 +56,23 @@ class Class_IIR_Peaking1(object):
         plt.axis('tight')
         plt.show()
 
-    def set_peaking(self, fpeak, gain0, Q0):
+    def set_lowshelving(self,):
         
-        omega= (fpeak / self.sr) * np.pi * 2.0
+        omega= (self.fc / self.sr) * np.pi * 2.0
         sn= np.sin(omega)
         cs= np.cos(omega)
-        alpha = sn / (2.0 * Q0)
+        alpha = sn / 2.0 * np.sqrt((self.gain + 1.0/self.gain) * (1.0/self.slope - 1.0) + 2.0)
         
-        A=np.sqrt(gain0) 
         b=np.zeros(3) # umerator(bunsi)
         a=np.zeros(3) # denominator(bunbo)
         
-        # if flat (gain is 1.0)
-        if gain0 == 1.0:
-        	a[0]=1.0
-        	b[0]=1.0
-        	return b,a
+        a[0]= ((self.gain + 1.0 ) + (self.gain - 1.0) * cs + 2.0 * np.sqrt(self.gain) * alpha)
+        a[1]= -2.0 * (( self.gain - 1.0) + ( self.gain + 1.0) * cs)
+        a[2]= ((self.gain + 1.0) + (self.gain - 1.0 ) * cs - 2.0 * np.sqrt( self.gain) * alpha )
         
-        a[0]= 1.0 + alpha / A
-        a[1]= -2.0 * cs
-        a[2]= 1.0 - alpha / A
-        
-        b[0]= 1.0 + alpha * A
-        b[1]= -2.0 * cs
-        b[2]= 1.0 - alpha * A
+        b[0]= self.gain * ((self.gain +1.0 ) - (self.gain - 1.0) * cs + 2.0 * np.sqrt(self.gain) * alpha )
+        b[1]= 2.0 * self.gain * ((self.gain - 1.0) - (self.gain + 1.0 ) * cs)
+        b[2]= self.gain * ((self.gain + 1.0) - (self.gain - 1.0) * cs - 2.0 * np.sqrt(self.gain) * alpha)
         
         b /= a[0]
         a /= a[0]
@@ -87,13 +82,9 @@ class Class_IIR_Peaking1(object):
 
 if __name__ == '__main__':
     
-    # Boost sample 
-    iir_pk1=Class_IIR_Peaking1(fpeak=500, gain=2.0, Q=1.5, sampling_rate=48000)
+    # low shelf filter sample 
+    iir_LS1=Class_IIR_LowShelving1( fc=350, gain=4.0, slope=0.75, sampling_rate=48000)
     # draw frequency response
-    iir_pk1.f_show()
+    iir_LS1.f_show()
     
     
-    # Drop sample 
-    iir_pk1=Class_IIR_Peaking1(fpeak=2000, gain=0.5, Q=0.7, sampling_rate=48000)
-    # draw frequency response
-    iir_pk1.f_show()
