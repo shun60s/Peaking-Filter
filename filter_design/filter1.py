@@ -51,20 +51,38 @@ if __name__ == '__main__':
     
     w,sr= read_wav( file_path_in )
     
-    hpf= HPF4(sr=sr)
+    hpf= HPF4(sr=sr)  # sr sampling rate
     lpf= LPF4(sr=sr)
     bpf4b= BPF4_butter(sr=sr)
     bpf2q= BPF2_Q(sr=sr)
     
-    y= signal.lfilter(hpf.b, hpf.a, w)
+    y= hpf(w)
     save_wav('wav/hpf4_out.wav', y, sr=sr)
     
-    y= signal.lfilter(lpf.b, lpf.a, w)
+    y= lpf(w)
     save_wav('wav/lpf4_out.wav', y, sr=sr)
     
-    y= signal.lfilter(bpf4b.b, bpf4b.a, w)
+    y= bpf4b(w)
     save_wav('wav/bpf4b_out.wav', y, sr=sr)
     
-    y= signal.lfilter(bpf2q.b, bpf2q.a, w)
+    y= bpf2q(w)
     save_wav('wav/bpf2q_out.wav', y, sr=sr)
     
+    
+    # moving average
+    N=1024  # MAPN moving average points number
+    lpf1=LPF1(MAPN=N,sr=sr)
+    y= lpf1(np.abs(w))
+    save_wav('wav/moving_average_out.wav', y, sr=sr)
+    yma=y[:N * int(len(w)/N)][::N] # get every N point data
+    print (yma.shape)
+    
+    # N points mean
+    yn=np.abs(w[:N * int(len(w)/N)]).reshape(-1,N).mean(axis=1)
+    print ( yn.shape)
+    save_wav('wav/N_point_average_out.wav', yn, sr=sr)
+    
+    # comparison
+    yma_vs_yn= np.stack([yma, yn], 1)
+    save_wav('wav/moving_average_vs_N_point_average_out.wav', yma_vs_yn, sr=sr)
+   
